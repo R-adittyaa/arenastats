@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "db:postgres": "node -e \"const fs=require('fs'); let s=fs.readFileSync('prisma/schema.prisma','utf8'); s=s.replace(/provider\\s*=\\s*\\\"sqlite\\\"/, 'provider = \\\"postgresql\\\"'); fs.writeFileSync('prisma/schema.prisma',s); console.log('Prisma schema provider changed to PostgreSQL!');\"",
+    "db:sqlite": "node -e \"const fs=require('fs'); let s=fs.readFileSync('prisma/schema.prisma','utf8'); s=s.replace(/provider\\s*=\\s*\\\"postgresql\\\"/, 'provider = \\\"sqlite\\\"'); fs.writeFileSync('prisma/schema.prisma',s); console.log('Prisma schema provider changed to SQLite!');\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
