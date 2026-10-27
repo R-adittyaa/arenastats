@@ -1,0 +1,209 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { TeamService, CreateTeamInput, UpdateTeamInput } from "@/services/team.service";
+import { PlayerService, CreatePlayerInput, UpdatePlayerInput } from "@/services/player.service";
+import { SeasonService, CreateSeasonInput, UpdateSeasonInput } from "@/services/season.service";
+import { MatchService, RecordMatchResultInput, CorrectMatchResultInput } from "@/services/match.service";
+import { MatchStatus, SeasonStatus } from "@/types";
+
+// --- TEAMS ACTIONS ---
+export async function createTeamAction(input: CreateTeamInput) {
+  try {
+    const team = await TeamService.createTeam(input);
+    revalidatePath("/teams");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    return { success: true, data: team };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal membuat tim." };
+  }
+}
+
+export async function updateTeamAction(id: string, input: UpdateTeamInput) {
+  try {
+    const team = await TeamService.updateTeam(id, input);
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${id}`);
+    revalidatePath("/");
+    return { success: true, data: team };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengedit tim." };
+  }
+}
+
+export async function archiveTeamAction(id: string) {
+  try {
+    await TeamService.archiveTeam(id);
+    revalidatePath("/teams");
+    revalidatePath("/");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengarsipkan tim." };
+  }
+}
+
+export async function unarchiveTeamAction(id: string) {
+  try {
+    await TeamService.unarchiveTeam(id);
+    revalidatePath("/teams");
+    revalidatePath("/");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengaktifkan kembali tim." };
+  }
+}
+
+export async function deleteTeamAction(id: string) {
+  try {
+    await TeamService.deleteTeam(id);
+    revalidatePath("/teams");
+    revalidatePath("/");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal menghapus tim." };
+  }
+}
+
+// --- PLAYERS ACTIONS ---
+export async function createPlayerAction(input: CreatePlayerInput) {
+  try {
+    const player = await PlayerService.createPlayer(input);
+    revalidatePath("/players");
+    revalidatePath("/");
+    return { success: true, data: player };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal membuat pemain." };
+  }
+}
+
+export async function updatePlayerAction(id: string, input: UpdatePlayerInput) {
+  try {
+    const player = await PlayerService.updatePlayer(id, input);
+    revalidatePath("/players");
+    revalidatePath("/");
+    return { success: true, data: player };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengedit pemain." };
+  }
+}
+
+export async function archivePlayerAction(id: string) {
+  try {
+    await PlayerService.archivePlayer(id);
+    revalidatePath("/players");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengarsipkan pemain." };
+  }
+}
+
+// --- SEASONS ACTIONS ---
+export async function createSeasonAction(input: CreateSeasonInput) {
+  try {
+    const season = await SeasonService.createSeason(input);
+    revalidatePath("/seasons");
+    revalidatePath("/");
+    return { success: true, data: season };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal membuat season." };
+  }
+}
+
+export async function updateSeasonAction(id: string, input: UpdateSeasonInput) {
+  try {
+    const season = await SeasonService.updateSeason(id, input);
+    revalidatePath("/seasons");
+    revalidatePath(`/seasons/${id}`);
+    revalidatePath("/standings");
+    revalidatePath("/matches");
+    revalidatePath("/");
+    return { success: true, data: season };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengedit season." };
+  }
+}
+
+export async function addParticipantAction(seasonId: string, teamId: string, seedNumber?: number) {
+  try {
+    const res = await SeasonService.addParticipant(seasonId, teamId, seedNumber);
+    revalidatePath(`/seasons/${seasonId}`);
+    return { success: true, data: res };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mendaftarkan tim." };
+  }
+}
+
+export async function removeParticipantAction(seasonId: string, teamId: string) {
+  try {
+    await SeasonService.removeParticipant(seasonId, teamId);
+    revalidatePath(`/seasons/${seasonId}`);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengeluarkan tim." };
+  }
+}
+
+export async function generateFixturesAction(seasonId: string) {
+  try {
+    const res = await SeasonService.generateSeasonFixtures(seasonId);
+    revalidatePath(`/seasons/${seasonId}`);
+    revalidatePath("/matches");
+    revalidatePath("/standings");
+    revalidatePath("/");
+    return { success: true, data: res };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal membuat jadwal." };
+  }
+}
+
+// --- MATCHES ACTIONS ---
+export async function recordResultAction(input: RecordMatchResultInput) {
+  try {
+    const match = await MatchService.recordResult(input);
+    revalidatePath(`/seasons/${match.seasonId}`);
+    revalidatePath("/matches");
+    revalidatePath("/standings");
+    revalidatePath("/");
+    return { success: true, data: match };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal menyimpan skor." };
+  }
+}
+
+export async function correctResultAction(input: CorrectMatchResultInput) {
+  try {
+    const match = await MatchService.correctResult(input);
+    revalidatePath(`/seasons/${match.seasonId}`);
+    revalidatePath("/matches");
+    revalidatePath("/standings");
+    revalidatePath("/");
+    return { success: true, data: match };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengoreksi skor." };
+  }
+}
+
+export async function updateMatchStatusAction(matchId: string, status: MatchStatus, notes?: string) {
+  try {
+    const match = await MatchService.updateMatchStatus(matchId, status, notes);
+    revalidatePath(`/seasons/${match.seasonId}`);
+    revalidatePath("/matches");
+    revalidatePath("/standings");
+    revalidatePath("/");
+    return { success: true, data: match };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal memperbarui status laga." };
+  }
+}
+
+export async function updateMatchScheduleAction(matchId: string, scheduledAt: string | null, venue?: string | null) {
+  try {
+    const match = await MatchService.updateMatchSchedule(matchId, scheduledAt, venue);
+    revalidatePath(`/seasons/${match.seasonId}`);
+    revalidatePath("/matches");
+    return { success: true, data: match };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal memperbarui jadwal." };
+  }
+}

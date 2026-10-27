@@ -1,0 +1,234 @@
+// Prisma schema for ArenaStats Tournament Management & Statistics Engine
+// Complies with PRD v2.0.0 Section 8 (Database Design)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  owner_id   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members           WorkspaceMember[]
+  teams             Team[]
+  players           Player[]
+  seasons           Season[]
+  metricDefinitions MetricDefinition[]
+  auditLogs         AuditLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  role        String   @default("administrator") // administrator, editor, viewer
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model Team {
+  id          String    @id @default(uuid())
+  workspaceId String    @map("workspace_id")
+  name        String
+  shortCode   String    @map("short_code")
+  logoUrl     String?   @map("logo_url")
+  description String?
+  status      String    @default("active") // active, archived
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime? @map("archived_at")
+
+  workspace           Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberships         TeamMembership[]
+  seasonParticipants  SeasonParticipant[]
+  homeMatches         Match[]             @relation("HomeTeam")
+  awayMatches         Match[]             @relation("AwayTeam")
+  wonMatches          Match[]             @relation("WinningTeam")
+
+  @@unique([workspaceId, shortCode])
+  @@map("teams")
+}
+
+model Player {
+  id          String    @id @default(uuid())
+  workspaceId String    @map("workspace_id")
+  displayName String    @map("display_name")
+  ign         String?   // In-Game Name / Nickname
+  role        String?   // e.g. Forward, Midlaner, IGL, Driver
+  countryCode String?   @map("country_code")
+  avatarUrl   String?   @map("avatar_url")
+  status      String    @default("active") // active, archived
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime? @map("archived_at")
+
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberships      TeamMembership[]
+  matchPlayerStats MatchPlayerStat[]
+
+  @@map("players")
+}
+
+model TeamMembership {
+  id        String    @id @default(uuid())
+  playerId  String    @map("player_id")
+  teamId    String    @map("team_id")
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now())
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("team_memberships")
+}
+
+model Season {
+  id             String    @id @default(uuid())
+  workspaceId    String    @map("workspace_id")
+  name           String
+  slug           String?
+  format         String    @default("SINGLE_ROUND_ROBIN") // SINGLE_ROUND_ROBIN
+  status         String    @default("draft") // draft, scheduled, active, completed, archived
+  startDate      DateTime? @map("start_date")
+  endDate        DateTime? @map("end_date")
+  pointsForWin   Int       @default(3) @map("points_for_win")
+  pointsForDraw  Int       @default(1) @map("points_for_draw")
+  pointsForLoss  Int       @default(0) @map("points_for_loss")
+  standingsRules String    @default("{\"tie_breakers\":[\"pts\",\"sd\",\"sf\",\"h2h\"]}") @map("standings_rules")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  archivedAt     DateTime? @map("archived_at")
+
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  participants SeasonParticipant[]
+  matches      Match[]
+
+  @@map("seasons")
+}
+
+model SeasonParticipant {
+  id                 String   @id @default(uuid())
+  seasonId           String   @map("season_id")
+  teamId             String   @map("team_id")
+  seedNumber         Int?     @map("seed_number")
+  registrationStatus String   @default("registered") @map("registration_status")
+  createdAt          DateTime @default(now())
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, teamId])
+  @@map("season_participants")
+}
+
+model Match {
+  id            String    @id @default(uuid())
+  seasonId      String    @map("season_id")
+  roundNumber   Int?      @map("round_number")
+  matchNumber   Int?      @map("match_number")
+  homeTeamId    String    @map("home_team_id")
+  awayTeamId    String    @map("away_team_id")
+  scheduledAt   DateTime? @map("scheduled_at")
+  venue         String?
+  status        String    @default("scheduled") // scheduled, live, completed, postponed, cancelled, walkover
+  homeScore     Int?      @map("home_score")
+  awayScore     Int?      @map("away_score")
+  winnerTeamId  String?   @map("winner_team_id")
+  completedAt   DateTime? @map("completed_at")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  season      Season                @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  homeTeam    Team                  @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam    Team                  @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  winnerTeam  Team?                 @relation("WinningTeam", fields: [winnerTeamId], references: [id], onDelete: SetNull)
+  revisions   MatchResultRevision[]
+  playerStats MatchPlayerStat[]
+
+  @@map("matches")
+}
+
+model MatchResultRevision {
+  id                String   @id @default(uuid())
+  matchId           String   @map("match_id")
+  previousHomeScore Int?     @map("previous_home_score")
+  previousAwayScore Int?     @map("previous_away_score")
+  newHomeScore      Int?     @map("new_home_score")
+  newAwayScore      Int?     @map("new_away_score")
+  changedBy         String?  @map("changed_by")
+  reason            String?
+  createdAt         DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_result_revisions")
+}
+
+model MetricDefinition {
+  id              String   @id @default(uuid())
+  workspaceId     String   @map("workspace_id")
+  key             String
+  label           String
+  category        String   // generic, football, esports
+  valueType       String   @map("value_type") // number, text, percentage
+  unit            String?
+  validationRules String?  @map("validation_rules")
+  createdAt       DateTime @default(now())
+
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  playerStats MatchPlayerStat[]
+
+  @@unique([workspaceId, key])
+  @@map("metric_definitions")
+}
+
+model MatchPlayerStat {
+  id                 String   @id @default(uuid())
+  matchId            String   @map("match_id")
+  playerId           String   @map("player_id")
+  metricDefinitionId String   @map("metric_definition_id")
+  numericValue       Float?   @map("numeric_value")
+  textValue          String?  @map("text_value")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  match            Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player           Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  metricDefinition MetricDefinition @relation(fields: [metricDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId, metricDefinitionId])
+  @@map("match_player_stats")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  actorId     String?  @map("actor_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
