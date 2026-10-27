@@ -28,7 +28,7 @@ export class TeamService {
 
     const workspace = input.workspaceId
       ? { id: input.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     const existing = await prisma.team.findUnique({
       where: {
@@ -151,7 +151,7 @@ export class TeamService {
   } = {}) {
     const workspace = params.workspaceId
       ? { id: params.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     const where: Record<string, unknown> = {
       workspaceId: workspace.id,

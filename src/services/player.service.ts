@@ -27,7 +27,7 @@ export class PlayerService {
 
     const workspace = input.workspaceId
       ? { id: input.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     const player = await prisma.player.create({
       data: {
@@ -132,7 +132,7 @@ export class PlayerService {
   } = {}) {
     const workspace = params.workspaceId
       ? { id: params.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     const where: Record<string, unknown> = {
       workspaceId: workspace.id,

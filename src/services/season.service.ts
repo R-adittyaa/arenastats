@@ -34,7 +34,7 @@ export class SeasonService {
 
     const workspace = input.workspaceId
       ? { id: input.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     return prisma.season.create({
       data: {
@@ -271,7 +271,7 @@ export class SeasonService {
   } = {}) {
     const workspace = params.workspaceId
       ? { id: params.workspaceId }
-      : await WorkspaceService.getOrCreateDefaultWorkspace();
+      : await WorkspaceService.getActiveWorkspace();
 
     const where: Record<string, unknown> = {
       workspaceId: workspace.id,

@@ -1,11 +1,44 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { WorkspaceService, CreateWorkspaceInput } from "@/services/workspace.service";
 import { TeamService, CreateTeamInput, UpdateTeamInput } from "@/services/team.service";
 import { PlayerService, CreatePlayerInput, UpdatePlayerInput } from "@/services/player.service";
 import { SeasonService, CreateSeasonInput, UpdateSeasonInput } from "@/services/season.service";
 import { MatchService, RecordMatchResultInput, CorrectMatchResultInput } from "@/services/match.service";
 import { MatchStatus, SeasonStatus } from "@/types";
+
+// --- WORKSPACE / VERSE ACTIONS ---
+export async function createWorkspaceAction(input: CreateWorkspaceInput) {
+  try {
+    const ws = await WorkspaceService.createWorkspace(input);
+    const cookieStore = await cookies();
+    cookieStore.set("arenastats_active_verse", ws.slug, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { success: true, data: ws };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal membuat Verse baru." };
+  }
+}
+
+export async function switchWorkspaceAction(slug: string) {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set("arenastats_active_verse", slug, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/teams");
+    revalidatePath("/players");
+    revalidatePath("/seasons");
+    revalidatePath("/matches");
+    revalidatePath("/standings");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal beralih Verse." };
+  }
+}
 
 // --- TEAMS ACTIONS ---
 export async function createTeamAction(input: CreateTeamInput) {

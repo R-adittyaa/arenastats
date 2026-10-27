@@ -11,12 +11,15 @@ datasource db {
 }
 
 model Workspace {
-  id         String   @id @default(uuid())
-  name       String
-  slug       String   @unique
-  owner_id   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  category    String   @default("esports") // esports, sports, racing, fantasy, custom
+  description String?
+  icon        String?  @default("🎮")
+  owner_id    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   members           WorkspaceMember[]
   teams             Team[]
