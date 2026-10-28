@@ -1,29 +1,46 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { WorkspaceService } from "@/services/workspace.service";
+import { unstable_cache } from "next/cache";
+
+// Import Font Premium (Gak perlu pake system font lagi)
+const jakarta = Plus_Jakarta_Sans({ 
+  subsets: ["latin"], 
+  variable: "--font-jakarta" 
+});
+const mono = JetBrains_Mono({ 
+  subsets: ["latin"], 
+  variable: "--font-mono" 
+});
 
 export const metadata: Metadata = {
-  title: "ArenaStats - Multiverse Tournament & Statistics Engine",
-  description:
-    "Portal kompetisi dan manajemen turnamen multi-verse: Esports, Sepak Bola, Balap, hingga Liga Fantasi dalam satu sistem terintegrasi.",
+  title: "ArenaStats - Tournament Engine",
+  description: "Advanced tournament management and statistics.",
 };
 
-export const dynamic = "force-dynamic";
+// Kita cache query workspace biar gak delay tiap pindah halaman
+const getCachedWorkspaces = unstable_cache(
+  async () => {
+    const [active, all] = await Promise.all([
+      WorkspaceService.getActiveWorkspace().catch(() => null),
+      WorkspaceService.getAllWorkspaces().catch(() => []),
+    ]);
+    return { active, all };
+  },
+  ["workspace-data"],
+  { revalidate: 3600, tags: ["workspaces"] } // Cache 1 jam
+);
 
 export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const [currentVerse, allVerses] = await Promise.all([
-    WorkspaceService.getActiveWorkspace().catch(() => null),
-    WorkspaceService.getAllWorkspaces().catch(() => []),
-  ]);
+}: Readonly<{ children: React.ReactNode }>) {
+  const { active: currentVerse, all: allVerses } = await getCachedWorkspaces();
 
   return (
-    <html lang="id" className="dark">
-      <body className="antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
+    <html lang="id" className={`dark ${jakarta.variable} ${mono.variable}`}>
+      <body className="antialiased bg-arena-bg text-arena-foreground selection:bg-arena-accent/30 font-sans">
         <AppShell currentVerse={currentVerse} allVerses={allVerses}>
           {children}
         </AppShell>

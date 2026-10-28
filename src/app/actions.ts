@@ -1,13 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { WorkspaceService, CreateWorkspaceInput } from "@/services/workspace.service";
 import { TeamService, CreateTeamInput, UpdateTeamInput } from "@/services/team.service";
 import { PlayerService, CreatePlayerInput, UpdatePlayerInput } from "@/services/player.service";
 import { SeasonService, CreateSeasonInput, UpdateSeasonInput } from "@/services/season.service";
 import { MatchService, RecordMatchResultInput, CorrectMatchResultInput } from "@/services/match.service";
-import { MatchStatus, SeasonStatus } from "@/types";
+import { MatchStatus } from "@/types";
 
 // --- WORKSPACE / VERSE ACTIONS ---
 export async function createWorkspaceAction(input: CreateWorkspaceInput) {
@@ -15,11 +15,14 @@ export async function createWorkspaceAction(input: CreateWorkspaceInput) {
     const ws = await WorkspaceService.createWorkspace(input);
     const cookieStore = await cookies();
     cookieStore.set("arenastats_active_verse", ws.slug, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    
+    // Hapus cache workspace karena ada data baru
+    revalidateTag("workspaces");
     revalidatePath("/");
     revalidatePath("/dashboard");
     return { success: true, data: ws };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal membuat Verse baru." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal membuat Verse baru." };
   }
 }
 
@@ -27,6 +30,9 @@ export async function switchWorkspaceAction(slug: string) {
   try {
     const cookieStore = await cookies();
     cookieStore.set("arenastats_active_verse", slug, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    
+    // Hapus cache workspace karena active verse berubah
+    revalidateTag("workspaces");
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/teams");
@@ -35,8 +41,8 @@ export async function switchWorkspaceAction(slug: string) {
     revalidatePath("/matches");
     revalidatePath("/standings");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal beralih Verse." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal beralih Verse." };
   }
 }
 
@@ -44,12 +50,12 @@ export async function switchWorkspaceAction(slug: string) {
 export async function createTeamAction(input: CreateTeamInput) {
   try {
     const team = await TeamService.createTeam(input);
+    // Hapus revalidatePath("/") biar gak delay
     revalidatePath("/teams");
     revalidatePath("/dashboard");
-    revalidatePath("/");
     return { success: true, data: team };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal membuat tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal membuat tim." };
   }
 }
 
@@ -58,10 +64,9 @@ export async function updateTeamAction(id: string, input: UpdateTeamInput) {
     const team = await TeamService.updateTeam(id, input);
     revalidatePath("/teams");
     revalidatePath(`/teams/${id}`);
-    revalidatePath("/");
     return { success: true, data: team };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengedit tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengedit tim." };
   }
 }
 
@@ -69,10 +74,9 @@ export async function archiveTeamAction(id: string) {
   try {
     await TeamService.archiveTeam(id);
     revalidatePath("/teams");
-    revalidatePath("/");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengarsipkan tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengarsipkan tim." };
   }
 }
 
@@ -80,10 +84,9 @@ export async function unarchiveTeamAction(id: string) {
   try {
     await TeamService.unarchiveTeam(id);
     revalidatePath("/teams");
-    revalidatePath("/");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengaktifkan kembali tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengaktifkan kembali tim." };
   }
 }
 
@@ -91,10 +94,9 @@ export async function deleteTeamAction(id: string) {
   try {
     await TeamService.deleteTeam(id);
     revalidatePath("/teams");
-    revalidatePath("/");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal menghapus tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal menghapus tim." };
   }
 }
 
@@ -103,10 +105,9 @@ export async function createPlayerAction(input: CreatePlayerInput) {
   try {
     const player = await PlayerService.createPlayer(input);
     revalidatePath("/players");
-    revalidatePath("/");
     return { success: true, data: player };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal membuat pemain." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal membuat pemain." };
   }
 }
 
@@ -114,10 +115,9 @@ export async function updatePlayerAction(id: string, input: UpdatePlayerInput) {
   try {
     const player = await PlayerService.updatePlayer(id, input);
     revalidatePath("/players");
-    revalidatePath("/");
     return { success: true, data: player };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengedit pemain." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengedit pemain." };
   }
 }
 
@@ -126,8 +126,8 @@ export async function archivePlayerAction(id: string) {
     await PlayerService.archivePlayer(id);
     revalidatePath("/players");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengarsipkan pemain." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengarsipkan pemain." };
   }
 }
 
@@ -136,10 +136,9 @@ export async function createSeasonAction(input: CreateSeasonInput) {
   try {
     const season = await SeasonService.createSeason(input);
     revalidatePath("/seasons");
-    revalidatePath("/");
     return { success: true, data: season };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal membuat season." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal membuat season." };
   }
 }
 
@@ -150,10 +149,9 @@ export async function updateSeasonAction(id: string, input: UpdateSeasonInput) {
     revalidatePath(`/seasons/${id}`);
     revalidatePath("/standings");
     revalidatePath("/matches");
-    revalidatePath("/");
     return { success: true, data: season };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengedit season." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengedit season." };
   }
 }
 
@@ -162,8 +160,8 @@ export async function addParticipantAction(seasonId: string, teamId: string, see
     const res = await SeasonService.addParticipant(seasonId, teamId, seedNumber);
     revalidatePath(`/seasons/${seasonId}`);
     return { success: true, data: res };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mendaftarkan tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mendaftarkan tim." };
   }
 }
 
@@ -172,8 +170,8 @@ export async function removeParticipantAction(seasonId: string, teamId: string) 
     await SeasonService.removeParticipant(seasonId, teamId);
     revalidatePath(`/seasons/${seasonId}`);
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengeluarkan tim." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengeluarkan tim." };
   }
 }
 
@@ -183,10 +181,9 @@ export async function generateFixturesAction(seasonId: string) {
     revalidatePath(`/seasons/${seasonId}`);
     revalidatePath("/matches");
     revalidatePath("/standings");
-    revalidatePath("/");
     return { success: true, data: res };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal membuat jadwal." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal membuat jadwal." };
   }
 }
 
@@ -197,10 +194,9 @@ export async function recordResultAction(input: RecordMatchResultInput) {
     revalidatePath(`/seasons/${match.seasonId}`);
     revalidatePath("/matches");
     revalidatePath("/standings");
-    revalidatePath("/");
     return { success: true, data: match };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal menyimpan skor." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal menyimpan skor." };
   }
 }
 
@@ -210,10 +206,9 @@ export async function correctResultAction(input: CorrectMatchResultInput) {
     revalidatePath(`/seasons/${match.seasonId}`);
     revalidatePath("/matches");
     revalidatePath("/standings");
-    revalidatePath("/");
     return { success: true, data: match };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal mengoreksi skor." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengoreksi skor." };
   }
 }
 
@@ -223,10 +218,9 @@ export async function updateMatchStatusAction(matchId: string, status: MatchStat
     revalidatePath(`/seasons/${match.seasonId}`);
     revalidatePath("/matches");
     revalidatePath("/standings");
-    revalidatePath("/");
     return { success: true, data: match };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal memperbarui status laga." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal memperbarui status laga." };
   }
 }
 
@@ -236,7 +230,7 @@ export async function updateMatchScheduleAction(matchId: string, scheduledAt: st
     revalidatePath(`/seasons/${match.seasonId}`);
     revalidatePath("/matches");
     return { success: true, data: match };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Gagal memperbarui jadwal." };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal memperbarui jadwal." };
   }
 }
